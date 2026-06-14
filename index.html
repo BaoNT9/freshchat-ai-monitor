@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Freshchat Agent Sandbox - AI Monitoring</title>
+  <style>
+    :root {
+      --primary: #0066FF;
+      --primary-light: #E6F0FF;
+      --bg-light: #F5F7FA;
+      --bg-white: #FFFFFF;
+      --border: #E1E5EB;
+      --text-primary: #1A1F36;
+      --text-secondary: #697386;
+      --text-muted: #9AA0A6;
+      --success: #22C55E;
+      --warning: #F59E0B;
+      --danger: #EF4444;
+      --accent: #0066FF;
+      --chat-customer: #F1F3F4;
+      --chat-agent: #E6F0FF;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-light);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Layout 3 Pane */
+    .app-container {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* Pane 1: Conversation List */
+    .pane-conversations {
+      width: 280px;
+      min-width: 280px;
+      background: var(--bg-white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pane-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pane-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-tab {
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      cursor: pointer;
+      background: var(--bg-light);
+      color: var(--text-secondary);
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .filter-tab.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .conversation-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .conversation-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .conversation-item:hover {
+      background: var(--bg-light);
+    }
+
+    .conversation-item.active {
+      background: var(--primary-light);
+      border-left: 3px solid var(--primary);
+    }
+
+    .conversation-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .customer-name {
+      font-weight: 500;
+      font-size: 14px;
+      flex: 1;
+    }
+
+    .conversation-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .conversation-preview {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 6px;
+    }
+
+    .conversation-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    .status-badge.open {
+      background: #DCFCE7;
+      color: #166534;
+    }
+
+    .status-badge.pending {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
+    .status-badge.resolved {
+      background: #F3F4F6;
+      color: #6B7280;
+    }
+
+    .dissatisfaction-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dissatisfaction-badge.normal {
+      background: #DCFCE7;
+      color: #166534;
+    }
+
+    .dissatisfaction-badge.tense {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
+    .dissatisfaction-badge.angry {
+      background: #FED7AA;
+      color: #9A3412;
+    }
+
+    .dissatisfaction-badge.critical {
+      background: #FECACA;
+      color: #991B1B;
+    }
+
+    /* Pane 2: Conversation View */
+    .pane-chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-white);
+      min-width: 400px;
+    }
+
+    .chat-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chat-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chat-customer-info h3 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .chat-customer-info .status {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .online-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .resolve-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .resolve-btn:hover {
+      background: var(--bg-light);
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 70%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message.customer {
+      align-self: flex-start;
+    }
+
+    .message.agent {
+      align-self: flex-end;
+    }
+
+    .message-bubble {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .message.customer .message-bubble {
+      background: var(--chat-customer);
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.agent .message-bubble {
+      background: var(--chat-agent);
+      border-bottom-right-radius: 4px;
+    }
+
+    .message-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .message.customer .message-time {
+      align-self: flex-start;
+    }
+
+    .message.agent .message-time {
+      align-self: flex-end;
+    }
+
+    .chat-composer {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .role-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .role-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .role-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .composer-input {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .composer-input textarea {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      resize: none;
+      font-size: 14px;
+      font-family: inherit;
+      min-height: 44px;
+      max-height: 120px;
+    }
+
+    .composer-input textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .send-btn {
+      padding: 10px 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .send-btn:hover {
+      background: #0052CC;
+    }
+
+    .send-btn:disabled {
+      background: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    /* Pane 3: AI Monitoring */
+    .pane-ai {
+      width: 320px;
+      min-width: 320px;
+      background: #F8FAFC;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .ai-panel {
+      background: white;
+      border-radius: 12px;
+      margin: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .ai-panel-header {
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #0066FF 0%, #0052CC 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ai-panel-header .icon {
+      font-size: 20px;
+    }
+
+    .ai-panel-header h3 {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .ai-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .ai-status .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ADE80;
+      animation: pulse 2s infinite;
+    }
+
+    .ai-status.analyzing .dot {
+      background: #FBBF24;
+    }
+
+    .ai-status.idle .dot {
+      background: #9CA3AF;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .ai-panel-content {
+      padding: 16px;
+    }
+
+    /* Gauge */
+    .gauge-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .gauge {
+      width: 140px;
+      height: 70px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gauge-bg {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: conic-gradient(
+        #22C55E 0deg 60deg,
+        #F59E0B 60deg 120deg,
+        #F97316 120deg 180deg,
+        #EF4444 180deg 216deg,
+        #E5E7EB 216deg 360deg
+      );
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .gauge-inner {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: white;
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .gauge-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .gauge-value.normal { color: #22C55E; }
+    .gauge-value.tense { color: #F59E0B; }
+    .gauge-value.angry { color: #F97316; }
+    .gauge-value.critical { color: #EF4444; }
+
+    .gauge-label {
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    .gauge-label.normal { color: #22C55E; }
+    .gauge-label.tense { color: #F59E0B; }
+    .gauge-label.angry { color: #F97316; }
+    .gauge-label.critical { color: #EF4444; }
+
+    /* Trend */
+    .trend-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 12px;
+      background: var(--bg-light);
+      border-radius: 8px;
+    }
+
+    .trend-icon {
+      font-size: 18px;
+    }
+
+    .trend-icon.up { color: #EF4444; }
+    .trend-icon.down { color: #22C55E; }
+    .trend-icon.stable { color: #6B7280; }
+
+    .trend-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .sparkline {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 24px;
+    }
+
+    .sparkline-bar {
+      width: 6px;
+      background: var(--primary);
+      border-radius: 2px;
+      opacity: 0.6;
+    }
+
+    .sparkline-bar:last-child {
+      opacity: 1;
+    }
+
+    /* Reason */
+    .section {
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .reason-text {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    /* Signals */
+    .signals-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .signal-chip {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: #FEE2E2;
+      color: #991B1B;
+      font-weight: 500;
+    }
+
+    /* Suggestion */
+    .suggestion-box {
+      background: #FEF3C7;
+      border: 1px solid #FCD34D;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .suggestion-box .icon {
+      font-size: 18px;
+    }
+
+    .suggestion-text {
+      font-size: 13px;
+      color: #92400E;
+      line-height: 1.5;
+    }
+
+    /* Alert Banner */
+    .alert-banner {
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 16px;
+      animation: alertPulse 2s infinite;
+    }
+
+    @keyframes alertPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+
+    .alert-banner .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .alert-banner .icon {
+      font-size: 18px;
+    }
+
+    .alert-banner .title {
+      font-weight: 600;
+      color: #991B1B;
+      font-size: 13px;
+    }
+
+    .alert-banner .message {
+      font-size: 12px;
+      color: #B91C1C;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .alert-acknowledge-btn {
+      background: #EF4444;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .alert-acknowledge-btn:hover {
+      background: #DC2626;
+    }
+
+    /* Empty State */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .empty-state .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Reset Button */
+    .reset-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      background: #6B7280;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: all 0.2s;
+      z-index: 100;
+    }
+
+    .reset-btn:hover {
+      background: #4B5563;
+    }
+
+    /* API Key Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      width: 400px;
+      max-width: 90%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .modal h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .modal p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .modal input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .modal-btn.secondary {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .modal-btn.primary {
+      background: var(--primary);
+      border: none;
+      color: white;
+    }
+
+    .modal-btn.primary:hover {
+      background: #0052CC;
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- API Key Modal -->
+  <div class="modal-overlay" id="apiKeyModal">
+    <div class="modal">
+      <h3>🔑 Nhập Anthropic API Key</h3>
+      <p>Để gọi AI phân tích mức độ bất mãn, cần có API key. Bạn có thể lấy key tại <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></p>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+      <div class="modal-buttons">
+        <button class="modal-btn secondary" onclick="useDemoMode()">Dùng chế độ Demo</button>
+        <button class="modal-btn primary" onclick="saveApiKey()">Lưu & Tiếp tục</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <!-- Pane 1: Conversation List -->
+    <div class="pane-conversations">
+      <div class="pane-header">
+        <h2>Cuộc trò chuyện</h2>
+        <div class="filter-tabs">
+          <button class="filter-tab active">Tất cả mở</button>
+          <button class="filter-tab">Của tôi</button>
+          <button class="filter-tab">Đã giải quyết</button>
+        </div>
+      </div>
+      <div class="conversation-list" id="conversationList">
+        <!-- Active Conversation -->
+        <div class="conversation-item active" data-id="1" onclick="selectConversation(1)">
+          <div class="conversation-header">
+            <div class="avatar">A</div>
+            <div class="customer-name">Nguyễn Văn A</div>
+            <div class="conversation-time">2p</div>
+          </div>
+          <div class="conversation-preview">Tôi đã chờ 30 phút rồi, khi nào mới có người hỗ trợ?</div>
+          <div class="conversation-meta">
+            <span class="status-badge open">Đang mở</span>
+            <span class="dissatisfaction-badge normal" id="badge-1">Bình thường</span>
+          </div>
+        </div>
+        <!-- Placeholder Conversations -->
+        <div class="conversation-item" data-id="2" onclick="selectConversation(2)">
+          <div class="conversation-header">
+            <div class="avatar" style="background: #8B5CF6;">B</div>
+            <div class="customer-name">Trần Thị B</div>
+            <div class="conversation-time">15p</div>
+          </div>
+          <div class="conversation-preview">Cảm ơn CS đã hỗ trợ, tôi hài lòng rồi!</div>
+          <div class="conversation-meta">
+            <span class="status-badge resolved">Đã giải quyết</span>
+          </div>
+        </div>
+        <div class="conversation-item" data-id="3" onclick="selectConversation(3)">
+          <div class="conversation-header">
+            <div class="avatar" style="background: #10B981;">C</div>
+            <div class="customer-name">Lê Văn C</div>
+            <div class="conversation-time">1h</div>
+          </div>
+          <div class="conversation-preview">Tôi muốn được gặp quản lý của các bạn</div>
+          <div class="conversation-meta">
+            <span class="status-badge pending">Chờ phản hồi</span>
+            <span class="dissatisfaction-badge tense" id="badge-3">Căng thẳng</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pane 2: Chat View -->
+    <div class="pane-chat">
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <div class="avatar">A</div>
+          <div class="chat-customer-info">
+            <h3>Nguyễn Văn A</h3>
+            <div class="status">
+              <span class="online-dot"></span>
+              Đang hoạt động
+            </div>
+          </div>
+        </div>
+        <button class="resolve-btn" onclick="markResolved()">✓ Đánh dấu đã giải quyết</button>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <!-- Messages will be added here -->
+      </div>
+      <div class="chat-composer">
+        <div class="role-toggle">
+          <button class="role-btn active" id="roleCustomerBtn" onclick="setRole('customer')">👤 Nhập với vai Khách hàng</button>
+          <button class="role-btn" id="roleAgentBtn" onclick="setRole('agent')">💼 Nhập với vai CS Zalopay</button>
+        </div>
+        <div class="composer-input">
+          <textarea id="messageInput" placeholder="Nhập tin nhắn..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">Gửi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pane 3: AI Monitoring -->
+    <div class="pane-ai">
+      <div class="ai-panel">
+        <div class="ai-panel-header">
+          <span class="icon">🤖</span>
+          <h3>AI Giám sát mức độ bất mãn</h3>
+          <div class="ai-status" id="aiStatus">
+            <span class="dot"></span>
+            <span id="statusText">Đang theo dõi</span>
+          </div>
+        </div>
+        <div class="ai-panel-content" id="aiPanelContent">
+          <div class="gauge-container">
+            <div class="gauge">
+              <div class="gauge-bg"></div>
+              <div class="gauge-inner">
+                <div class="gauge-value normal" id="gaugeValue">0</div>
+                <div class="gauge-label normal" id="gaugeLabel">Bình thường</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="trend-container">
+            <span class="trend-icon" id="trendIcon">➖</span>
+            <span class="trend-text" id="trendText">Chưa có dữ liệu</span>
+            <div class="sparkline" id="sparkline"></div>
+          </div>
+
+          <div class="section" id="reasonSection" style="display: none;">
+            <div class="section-title">Nhận định của AI</div>
+            <div class="reason-text" id="reasonText"></div>
+          </div>
+
+          <div class="section" id="signalsSection" style="display: none;">
+            <div class="section-title">Dấu hiệu phát hiện</div>
+            <div class="signals-list" id="signalsList"></div>
+          </div>
+
+          <div class="section" id="suggestionSection" style="display: none;">
+            <div class="suggestion-box">
+              <span class="icon">💡</span>
+              <div class="suggestion-text" id="suggestionText"></div>
+            </div>
+          </div>
+
+          <div class="alert-banner" id="alertBanner" style="display: none;">
+            <div class="header">
+              <span class="icon">⚠️</span>
+              <span class="title">Cảnh báo cao độ!</span>
+            </div>
+            <div class="message" id="alertMessage">Khách hàng đang rất bức xúc, cần ưu tiên xử lý ngay!</div>
+            <button class="alert-acknowledge-btn" onclick="acknowledgeAlert()">Đã xác nhận</button>
+          </div>
+
+          <div class="empty-state" id="emptyState">
+            <span class="icon">💬</span>
+            <p>Gửi tin nhắn để AI bắt đầu phân tích mức độ bất mãn của khách hàng</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="reset-btn" onclick="resetSession()">🔄 Làm mới phiên</button>
+
+  <script>
+    // State
+    let currentConversation = 1;
+    let currentRole = 'customer';
+    let messages = [];
+    let scoreHistory = [];
+    let alertAcknowledged = false;
+    let apiKey = localStorage.getItem('anthropic_api_key') || '';
+    let useDemo = localStorage.getItem('use_demo_mode') === 'true';
+
+    // Demo mode responses
+    const demoResponses = [
+      {
+        score: 3.5,
+        level: 'cang_thang',
+        trend: 'tang',
+        reason: 'Khách hàng bắt đầu thể hiện sự không hài lòng với thời gian chờ đợi. Cụm từ "đã chờ 30 phút" cho thấy mức độ frustration đang tăng.',
+        signals: ['Lặp lại vấn đề', 'Thời gian chờ lâu'],
+        alert: false,
+        suggestion: 'Xin lỗi về thời gian chờ. Để tôi kiểm tra ngay và hỗ trợ bạn trong tích tắc.'
+      },
+      {
+        score: 5.2,
+        level: 'cang_thang',
+        trend: 'tang',
+        reason: 'Khách hàng nhắc lại vấn đề thời gian chờ lần 2, thêm cụm "chưa có ai hỗ trợ" cho thấy mức độ bức xúc đang leo thang.',
+        signals: ['Lặp lại vấn đề', 'Ngôn ngữ tiêu cực'],
+        alert: true,
+        suggestion: 'Tôi thay mặt Zalopay xin lỗi vì trải nghiệm này. Để tôi ưu tiên kết nối bạn với chuyên viên ngay.'
+      },
+      {
+        score: 7.8,
+        level: 'buc_xuc',
+        trend: 'tang',
+        reason: 'Khách hàng sử dụng từ "quá lâu" và nhấn mạnh "30 phút" lần thứ 3, kèm theo yêu cầu gặp quản lý - dấu hiệu cảnh báo rõ ràng.',
+        signals: ['Lặp lại vấn đề', 'Yêu cầu gặp cấp trên', 'Ngôn ngữ tiêu cực'],
+        alert: true,
+        suggestion: 'Tôi hiểu sự bức xúc của bạn. Để tôi báo cáo và chuyển yêu cầu gặp quản lý ngay lập tức.'
+      },
+      {
+        score: 9.2,
+        level: 'nghiem_trong',
+        trend: 'tang',
+        reason: 'Khách hàng đe dọa khiếu nại ("sẽ kiện") và liên tục nhấn mạnh thời gian chờ. Đây là tình huống cần can thiệp khẩn cấp.',
+        signals: ['Đe dọa khiếu nại', 'Lặp lại vấn đề', 'Ngôn ngữ tiêu cực', 'Yêu cầu gặp cấp trên'],
+        alert: true,
+        suggestion: 'Rất tiếc về trải nghiệm này. Tôi sẽ báo cáo khẩn với quản lý và hoàn tiền để补偿 cho bạn ngay.'
+      },
+      {
+        score: 2.1,
+        level: 'binh_thuong',
+        trend: 'giam',
+        reason: 'Tin nhắn của khách hàng có nội dung tích cực, cảm ơn CS. Mức độ hài lòng được cải thiện.',
+        signals: ['Ngôn ngữ tích cực'],
+        alert: false,
+        suggestion: 'Cảm ơn phản hồi tích cực! Chúc bạn một ngày tốt lành.'
+      }
+    ];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      if (apiKey || useDemo) {
+        document.getElementById('apiKeyModal').classList.add('hidden');
+      }
+      initializeConversation();
+    });
+
+    function initializeConversation() {
+      // Add initial messages for demo
+      const initialMessages = [
+        { role: 'customer', content: 'Xin chào, tôi cần hỗ trợ về đơn hàng #12345', time: '10:30' },
+        { role: 'agent', content: 'Xin chào anh/chị! Em là CS của Zalopay. Anh/chị cho em xin thông tin đơn hàng để kiểm tra ạ.', time: '10:31' },
+        { role: 'customer', content: 'Đơn hàng của tôi đã đặt 3 ngày rồi mà vẫn chưa giao, theo dõi thì thấy đang "đóng gói". Sao lâu vậy?', time: '10:32' }
+      ];
+      messages = initialMessages;
+      renderMessages();
+    }
+
+    function selectConversation(id) {
+      currentConversation = id;
+      document.querySelectorAll('.conversation-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.id === String(id));
+      });
+    }
+
+    function setRole(role) {
+      currentRole = role;
+      document.getElementById('roleCustomerBtn').classList.toggle('active', role === 'customer');
+      document.getElementById('roleAgentBtn').classList.toggle('active', role === 'agent');
+    }
+
+    function handleKeyDown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const content = input.value.trim();
+      if (!content) return;
+
+      const now = new Date();
+      const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+      const message = { role: currentRole, content, time };
+      messages.push(message);
+
+      input.value = '';
+      renderMessages();
+
+      // Clear empty state
+      document.getElementById('emptyState').style.display = 'none';
+
+      // Analyze with AI
+      await analyzeConversation();
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('chatMessages');
+      container.innerHTML = messages.map(msg => `
+        <div class="message ${msg.role}">
+          <div class="message-bubble">${escapeHtml(msg.content)}</div>
+          <div class="message-time">${msg.time}</div>
+        </div>
+      `).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function analyzeConversation() {
+      const statusEl = document.getElementById('aiStatus');
+      const statusTextEl = document.getElementById('statusText');
+
+      statusEl.classList.add('analyzing');
+      statusEl.classList.remove('idle');
+      statusTextEl.textContent = 'Đang phân tích...';
+
+      let result;
+
+      // Call AgentBase AI agent
+      try {
+        result = await callAnthropicAPI();
+      } catch (error) {
+        console.error('API Error:', error);
+        statusEl.classList.remove('analyzing');
+        statusEl.classList.add('idle');
+        statusTextEl.textContent = 'Lỗi kết nối';
+        return;
+      }
+
+      // Update UI with result
+      updateAIPanel(result);
+
+      // Update badge in conversation list
+      updateConversationBadge(result);
+
+      statusEl.classList.remove('analyzing');
+      statusTextEl.textContent = 'Đang theo dõi';
+    }
+
+    // AgentBase endpoint - deployed AI agent
+    const AGENT_ENDPOINT = 'https://endpoint-99e957ab-e868-4cb9-a88f-c8f6ac525f1a.agentbase-runtime.aiplatform.vngcloud.vn';
+
+    async function callAnthropicAPI() {
+      const transcript = messages.map(m =>
+        `${m.role === 'customer' ? 'Khách hàng' : 'CS'}: ${m.content}`
+      ).join('\n');
+
+      // Call the deployed AgentBase agent
+      const response = await fetch(`${AGENT_ENDPOINT}/invocations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: messages
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'success' && data.data) {
+        return data.data;
+      } else {
+        throw new Error('Invalid response from agent');
+      }
+    }
+
+    function updateAIPanel(result) {
+      // Update gauge
+      const gaugeValue = document.getElementById('gaugeValue');
+      const gaugeLabel = document.getElementById('gaugeLabel');
+
+      gaugeValue.textContent = result.score.toFixed(1);
+      gaugeLabel.textContent = getLevelLabel(result.level);
+
+      const levelClass = getLevelClass(result.level);
+      gaugeValue.className = `gauge-value ${levelClass}`;
+      gaugeLabel.className = `gauge-label ${levelClass}`;
+
+      // Update score history
+      scoreHistory.push(result.score);
+      if (scoreHistory.length > 10) scoreHistory.shift();
+      updateSparkline();
+
+      // Update trend
+      updateTrend(result.trend);
+
+      // Update reason
+      if (result.reason) {
+        document.getElementById('reasonSection').style.display = 'block';
+        document.getElementById('reasonText').textContent = result.reason;
+      }
+
+      // Update signals
+      if (result.signals && result.signals.length > 0) {
+        document.getElementById('signalsSection').style.display = 'block';
+        document.getElementById('signalsList').innerHTML = result.signals.map(s =>
+          `<span class="signal-chip">${s}</span>`
+        ).join('');
+      } else {
+        document.getElementById('signalsSection').style.display = 'none';
+      }
+
+      // Update suggestion
+      if (result.suggestion) {
+        document.getElementById('suggestionSection').style.display = 'block';
+        document.getElementById('suggestionText').textContent = result.suggestion;
+      } else {
+        document.getElementById('suggestionSection').style.display = 'none';
+      }
+
+      // Update alert banner
+      if (result.alert && !alertAcknowledged) {
+        document.getElementById('alertBanner').style.display = 'block';
+      } else {
+        document.getElementById('alertBanner').style.display = 'none';
+      }
+    }
+
+    function getLevelLabel(level) {
+      const labels = {
+        'binh_thuong': 'Bình thường',
+        'cang_thang': 'Căng thẳng',
+        'buc_xuc': 'Bức xúc',
+        'nghiem_trong': 'Nghiêm trọng'
+      };
+      return labels[level] || 'Bình thường';
+    }
+
+    function getLevelClass(level) {
+      const classes = {
+        'binh_thuong': 'normal',
+        'cang_thang': 'tense',
+        'buc_xuc': 'angry',
+        'nghiem_trong': 'critical'
+      };
+      return classes[level] || 'normal';
+    }
+
+    function updateTrend(trend) {
+      const iconEl = document.getElementById('trendIcon');
+      const textEl = document.getElementById('trendText');
+
+      const trendData = {
+        'tang': { icon: '⬆️', text: 'Mức độ bất mãn tăng' },
+        'giam': { icon: '⬇️', text: 'Mức độ bất mãn giảm' },
+        'on_dinh': { icon: '➡️', text: 'Mức độ ổn định' }
+      };
+
+      const data = trendData[trend] || trendData['on_dinh'];
+      iconEl.textContent = data.icon;
+      iconEl.className = 'trend-icon ' + (trend === 'tang' ? 'up' : trend === 'giam' ? 'down' : 'stable');
+      textEl.textContent = data.text;
+    }
+
+    function updateSparkline() {
+      const container = document.getElementById('sparkline');
+      if (scoreHistory.length === 0) return;
+
+      const max = Math.max(...scoreHistory, 1);
+      container.innerHTML = scoreHistory.map(score => {
+        const height = (score / max) * 20 + 4;
+        return `<div class="sparkline-bar" style="height: ${height}px"></div>`;
+      }).join('');
+    }
+
+    function updateConversationBadge(result) {
+      const badge = document.getElementById('badge-1');
+      if (!badge) return;
+
+      const levelClass = getLevelClass(result.level);
+      badge.className = `dissatisfaction-badge ${levelClass}`;
+      badge.textContent = getLevelLabel(result.level);
+    }
+
+    function acknowledgeAlert() {
+      alertAcknowledged = true;
+      document.getElementById('alertBanner').style.display = 'none';
+    }
+
+    function markResolved() {
+      alert('Đã đánh dấu cuộc trò chuyện là đã giải quyết!');
+    }
+
+    function resetSession() {
+      if (confirm('Bạn có chắc muốn làm mới phiên? Tất cả tin nhắn sẽ bị xóa.')) {
+        messages = [];
+        scoreHistory = [];
+        alertAcknowledged = false;
+
+        // Reset AI panel
+        document.getElementById('gaugeValue').textContent = '0';
+        document.getElementById('gaugeValue').className = 'gauge-value normal';
+        document.getElementById('gaugeLabel').textContent = 'Bình thường';
+        document.getElementById('gaugeLabel').className = 'gauge-label normal';
+        document.getElementById('trendIcon').textContent = '➖';
+        document.getElementById('trendText').textContent = 'Chưa có dữ liệu';
+        document.getElementById('sparkline').innerHTML = '';
+        document.getElementById('reasonSection').style.display = 'none';
+        document.getElementById('signalsSection').style.display = 'none';
+        document.getElementById('suggestionSection').style.display = 'none';
+        document.getElementById('alertBanner').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'flex';
+
+        // Reset badge
+        const badge = document.getElementById('badge-1');
+        if (badge) {
+          badge.className = 'dissatisfaction-badge normal';
+          badge.textContent = 'Bình thường';
+        }
+
+        // Reinitialize
+        initializeConversation();
+      }
+    }
+
+    function saveApiKey() {
+      const input = document.getElementById('apiKeyInput');
+      if (!input.value.trim()) {
+        alert('Vui lòng nhập API key');
+        return;
+      }
+      apiKey = input.value.trim();
+      localStorage.setItem('anthropic_api_key', apiKey);
+      localStorage.setItem('use_demo_mode', 'false');
+      document.getElementById('apiKeyModal').classList.add('hidden');
+    }
+
+    function useDemoMode() {
+      localStorage.setItem('use_demo_mode', 'true');
+      useDemo = true;
+      document.getElementById('apiKeyModal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

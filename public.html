@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Freshchat AI Monitor - Public</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    .header h1 { font-size: 2rem; margin-bottom: 10px; }
+    .header p { opacity: 0.9; }
+
+    /* Main Card */
+    .main-card {
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    /* Chat Area */
+    .chat-area {
+      height: 400px;
+      overflow-y: auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+    .message {
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+    .message.customer { align-items: flex-start; }
+    .message.agent { align-items: flex-end; }
+    .message .bubble {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      line-height: 1.5;
+    }
+    .message.customer .bubble {
+      background: #e9ecef;
+      border-bottom-left-radius: 4px;
+    }
+    .message.agent .bubble {
+      background: #0066FF;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .message .time {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    /* Input Area */
+    .input-area {
+      display: flex;
+      gap: 10px;
+      padding: 20px;
+      background: white;
+      border-top: 1px solid #eee;
+    }
+    .input-area select {
+      padding: 12px;
+      border: 2px solid #eee;
+      border-radius: 10px;
+      font-size: 14px;
+      background: white;
+      cursor: pointer;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #eee;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .input-area input:focus {
+      outline: none;
+      border-color: #0066FF;
+    }
+    .input-area button {
+      padding: 12px 24px;
+      background: #0066FF;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .input-area button:hover { background: #0052CC; }
+
+    /* AI Panel */
+    .ai-panel {
+      padding: 20px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+    }
+    .ai-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .ai-header .icon { font-size: 24px; }
+    .ai-header h3 { flex: 1; font-size: 16px; }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22C55E;
+      animation: pulse 2s infinite;
+    }
+    .status-dot.analyzing { background: #FBBF24; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Gauge */
+    .gauge-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .gauge {
+      width: 120px;
+      height: 60px;
+      position: relative;
+      overflow: hidden;
+    }
+    .gauge-bg {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: conic-gradient(
+        #22C55E 0deg 60deg,
+        #F59E0B 60deg 120deg,
+        #F97316 120deg 180deg,
+        #EF4444 180deg 216deg,
+        #374151 216deg 360deg
+      );
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .gauge-inner {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .gauge-value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .gauge-value.normal { color: #22C55E; }
+    .gauge-value.tense { color: #F59E0B; }
+    .gauge-value.angry { color: #F97316; }
+    .gauge-value.critical { color: #EF4444; }
+    .gauge-label {
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 2px;
+      text-transform: uppercase;
+    }
+    .gauge-label.normal { color: #22C55E; }
+    .gauge-label.tense { color: #F59E0B; }
+    .gauge-label.angry { color: #F97316; }
+    .gauge-label.critical { color: #EF4444; }
+
+    /* Info Sections */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    .info-item {
+      background: rgba(255,255,255,0.1);
+      padding: 12px;
+      border-radius: 10px;
+    }
+    .info-item .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 6px;
+    }
+    .info-item .value {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* Signals */
+    .signals {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 15px;
+    }
+    .signal {
+      font-size: 11px;
+      padding: 4px 10px;
+      background: #FEE2E2;
+      color: #991B1B;
+      border-radius: 12px;
+    }
+
+    /* Suggestion */
+    .suggestion {
+      margin-top: 15px;
+      background: #FEF3C7;
+      color: #92400E;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    /* Alert */
+    .alert {
+      margin-top: 15px;
+      background: #FEF2F2;
+      border: 2px solid #EF4444;
+      border-radius: 10px;
+      padding: 15px;
+      animation: alertPulse 2s infinite;
+    }
+    @keyframes alertPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+    }
+    .alert .title {
+      font-weight: 700;
+      color: #991B1B;
+      margin-bottom: 5px;
+    }
+    .alert .msg { font-size: 13px; color: #B91C1C; }
+
+    /* Reset Button */
+    .reset-btn {
+      display: block;
+      margin: 20px auto 0;
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 Freshchat AI Monitor</h1>
+      <p>AI-powered customer dissatisfaction detection</p>
+    </div>
+
+    <div class="main-card">
+      <div class="chat-area" id="chatArea">
+        <div class="message agent">
+          <div class="bubble">Xin chào! Tôi là AI hỗ trợ. Vui lòng nhập tin nhắn để tôi phân tích mức độ hài lòng của khách hàng.</div>
+          <div class="time" id="firstTime"></div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <select id="roleSelect">
+          <option value="customer">👤 Khách hàng</option>
+          <option value="agent">💼 CS Zalopay</option>
+        </select>
+        <input type="text" id="messageInput" placeholder="Nhập tin nhắn..." onkeydown="if(event.key==='Enter')sendMessage()">
+        <button onclick="sendMessage()">Gửi</button>
+      </div>
+
+      <div class="ai-panel">
+        <div class="ai-header">
+          <span class="icon">🤖</span>
+          <h3>AI Giám sát mức độ bất mãn</h3>
+          <div class="status-dot" id="statusDot"></div>
+        </div>
+
+        <div class="gauge-container">
+          <div class="gauge">
+            <div class="gauge-bg"></div>
+            <div class="gauge-inner">
+              <div class="gauge-value normal" id="gaugeValue">0</div>
+              <div class="gauge-label normal" id="gaugeLabel">Normal</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="label">Xu hướng</div>
+            <div class="value" id="trendValue">-</div>
+          </div>
+          <div class="info-item">
+            <div class="label">Trạng thái</div>
+            <div class="value" id="statusValue">Chờ tin nhắn</div>
+          </div>
+        </div>
+
+        <div class="info-item" style="margin-top:15px">
+          <div class="label">Nhận định AI</div>
+          <div class="value" id="reasonValue">Chưa có dữ liệu</div>
+        </div>
+
+        <div class="signals" id="signalsContainer"></div>
+
+        <div class="suggestion" id="suggestionBox" style="display:none">
+          <strong>💡 Gợi ý:</strong> <span id="suggestionValue"></span>
+        </div>
+
+        <div class="alert" id="alertBox" style="display:none">
+          <div class="title">⚠️ CẢNH BÁO CAO ĐỘ!</div>
+          <div class="msg" id="alertValue">Khách hàng đang rất bức xúc!</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetChat()">🔄 Làm mới phiên chat</button>
+  </div>
+
+  <script>
+    // AgentBase endpoint
+    const AGENT_API = 'https://endpoint-99e957ab-e868-4cb9-a88f-c8f6ac525f1a.agentbase-runtime.aiplatform.vngcloud.vn/invocations';
+
+    let messages = [];
+
+    // Set first message time
+    document.getElementById('firstTime').textContent = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit',minute:'2-digit'});
+
+    async function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const role = document.getElementById('roleSelect').value;
+      const content = input.value.trim();
+
+      if (!content) return;
+
+      // Add message to chat
+      const time = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit',minute:'2-digit'});
+      messages.push({role, content});
+
+      // Render
+      const chatArea = document.getElementById('chatArea');
+      chatArea.innerHTML += `
+        <div class="message ${role}">
+          <div class="bubble">${escapeHtml(content)}</div>
+          <div class="time">${time}</div>
+        </div>
+      `;
+      chatArea.scrollTop = chatArea.scrollHeight;
+      input.value = '';
+
+      // Analyze with AI
+      await analyzeWithAI();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function analyzeWithAI() {
+      const statusDot = document.getElementById('statusDot');
+      const statusValue = document.getElementById('statusValue');
+
+      statusDot.classList.add('analyzing');
+      statusValue.textContent = 'Đang phân tích...';
+
+      try {
+        const response = await fetch(AGENT_API, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({messages})
+        });
+
+        if (!response.ok) throw new Error('API Error');
+
+        const data = await response.json();
+        console.log('AI Response:', data);
+
+        if (data.status === 'success' && data.data) {
+          updateAIPanel(data.data);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        statusValue.textContent = 'Lỗi kết nối';
+      }
+
+      statusDot.classList.remove('analyzing');
+    }
+
+    function updateAIPanel(result) {
+      const statusValue = document.getElementById('statusValue');
+
+      // Update gauge
+      const gaugeValue = document.getElementById('gaugeValue');
+      const gaugeLabel = document.getElementById('gaugeLabel');
+
+      gaugeValue.textContent = result.score.toFixed(1);
+      gaugeLabel.textContent = getLevelLabel(result.level);
+
+      const levelClass = getLevelClass(result.level);
+      gaugeValue.className = `gauge-value ${levelClass}`;
+      gaugeLabel.className = `gauge-label ${levelClass}`;
+
+      // Update trend
+      const trendValue = document.getElementById('trendValue');
+      const trendIcons = {tang: '⬆️ Tăng', giam: '⬇️ Giảm', on_dinh: '➡️ Ổn định'};
+      trendValue.textContent = trendIcons[result.trend] || '-';
+
+      // Update status
+      statusValue.textContent = 'Đã phân tích';
+
+      // Update reason
+      document.getElementById('reasonValue').textContent = result.reason || '-';
+
+      // Update signals
+      const signalsContainer = document.getElementById('signalsContainer');
+      if (result.signals && result.signals.length > 0) {
+        signalsContainer.innerHTML = result.signals.map(s => `<span class="signal">${s}</span>`).join('');
+      } else {
+        signalsContainer.innerHTML = '';
+      }
+
+      // Update suggestion
+      const suggestionBox = document.getElementById('suggestionBox');
+      if (result.suggestion) {
+        suggestionBox.style.display = 'block';
+        document.getElementById('suggestionValue').textContent = result.suggestion;
+      } else {
+        suggestionBox.style.display = 'none';
+      }
+
+      // Update alert
+      const alertBox = document.getElementById('alertBox');
+      if (result.alert) {
+        alertBox.style.display = 'block';
+      } else {
+        alertBox.style.display = 'none';
+      }
+    }
+
+    function getLevelLabel(level) {
+      const labels = {binh_thuong: 'Normal', cang_thang: 'Tense', buc_xuc: 'Angry', nghiem_trong: 'Critical'};
+      return labels[level] || 'Normal';
+    }
+
+    function getLevelClass(level) {
+      const classes = {binh_thuong: 'normal', cang_thang: 'tense', buc_xuc: 'angry', nghiem_trong: 'critical'};
+      return classes[level] || 'normal';
+    }
+
+    function resetChat() {
+      messages = [];
+      document.getElementById('chatArea').innerHTML = `
+        <div class="message agent">
+          <div class="bubble">Xin chào! Tôi là AI hỗ trợ. Vui lòng nhập tin nhắn để tôi phân tích mức độ hài lòng của khách hàng.</div>
+          <div class="time">${new Date().toLocaleTimeString('vi-VN', {hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      `;
+      document.getElementById('gaugeValue').textContent = '0';
+      document.getElementById('gaugeValue').className = 'gauge-value normal';
+      document.getElementById('gaugeLabel').textContent = 'Normal';
+      document.getElementById('gaugeLabel').className = 'gauge-label normal';
+      document.getElementById('trendValue').textContent = '-';
+      document.getElementById('statusValue').textContent = 'Chờ tin nhắn';
+      document.getElementById('reasonValue').textContent = 'Chưa có dữ liệu';
+      document.getElementById('signalsContainer').innerHTML = '';
+      document.getElementById('suggestionBox').style.display = 'none';
+      document.getElementById('alertBox').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
