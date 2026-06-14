@@ -347,8 +347,9 @@
   </div>
 
   <script>
-    // AgentBase endpoint
-    const AGENT_API = 'https://endpoint-99e957ab-e868-4cb9-a88f-c8f6ac525f1a.agentbase-runtime.aiplatform.vngcloud.vn/invocations';
+    // AgentBase endpoint - using corsproxy.io to bypass CORS
+    const AGENT_DIRECT = 'https://endpoint-99e957ab-e868-4cb9-a88f-c8f6ac525f1a.agentbase-runtime.aiplatform.vngcloud.vn/invocations';
+    const CORS_PROXY = 'https://corsproxy.io/?' + encodeURIComponent(AGENT_DIRECT);
 
     let messages = [];
 
@@ -395,7 +396,7 @@
       statusValue.textContent = 'Đang phân tích...';
 
       try {
-        const response = await fetch(AGENT_API, {
+        const response = await fetch(CORS_PROXY, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({messages})
